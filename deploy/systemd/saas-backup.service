@@ -1,0 +1,16 @@
+# Разовый запуск резервного копирования (дёргается таймером saas-backup.timer).
+[Unit]
+Description=SaaS database backup
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/saas
+ExecStart=/bin/bash deploy/scripts/backup.sh
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+# Бэкап не должен мешать основной нагрузке.
+Nice=10
+IOSchedulingClass=idle

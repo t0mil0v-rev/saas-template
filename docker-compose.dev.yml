@@ -1,0 +1,39 @@
+#  Оверлей для локальной разработки.
+#      docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+#  Отличия от production:
+#    * порты Postgres/Redis проброшены на localhost - можно подключиться psql'ем;
+#    * API с автоперезагрузкой и смонтированным исходником;
+#    * read_only снят (нужен для записи .pyc и hot-reload);
+#    * фронтенд поднимается отдельно через `npm run dev` (порт 5173).
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  api:
+    build:
+      target: development
+    command: ["python", "-m", "app.cli", "serve", "--reload"]
+    environment:
+      APP_ENV: development
+      LOG_FORMAT: console
+      LOG_LEVEL: debug
+      ENABLE_API_DOCS: "true"
+      API_WORKERS: "1"
+    read_only: false
+    volumes:
+      - ./apps/api/app:/app/app:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  caddy:
+    profiles: ["proxy"]
+
+  web:
+    profiles: ["proxy"]

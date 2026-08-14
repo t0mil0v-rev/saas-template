@@ -1,0 +1,13 @@
+# Ежедневный бэкап БД в 03:30 по времени сервера.
+#   sudo systemctl enable --now saas-backup.timer
+[Unit]
+Description=Daily SaaS database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+# Если сервер был выключен в назначенное время - снять копию при следующем старте.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

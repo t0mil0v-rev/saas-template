@@ -1,0 +1,63 @@
+# Нативный запуск API без Docker (чистый systemd).
+# Для варианта, где PostgreSQL и (опционально) Redis установлены на хост
+# пакетами, а приложение работает в системном venv.
+#
+# Предполагается:
+#   * код в /opt/saas/apps/api, venv в /opt/saas/apps/api/.venv
+#   * пользователь saas (без прав root, без shell)
+#   * /opt/saas/.env с правами 0600, владелец saas
+#
+# Установка - см. deploy/systemd/install-native.sh
+[Unit]
+Description=SaaS Platform API (native)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=saas
+Group=saas
+WorkingDirectory=/opt/saas/apps/api
+EnvironmentFile=/opt/saas/.env
+# Prefork-супервизор сам форкает воркеры (SO_REUSEPORT).
+ExecStartPre=/opt/saas/apps/api/.venv/bin/python -m app.cli check-config
+ExecStart=/opt/saas/apps/api/.venv/bin/python -m app.cli serve
+# Graceful: супервизор ловит SIGTERM и гасит воркеры по очереди.
+KillSignal=SIGTERM
+TimeoutStopSec=40
+Restart=always
+RestartSec=5
+# Перезапуск по SIGHUP делает rolling-restart воркеров без простоя.
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Песочница systemd (defence in depth)
+# Приложению не нужны привилегии - забираем всё, что можно.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+# Каталог для метрик prometheus (multiproc) - единственное, что пишется на диск.
+RuntimeDirectory=saas
+Environment=PROMETHEUS_MULTIPROC_DIR=/run/saas/prometheus
+# Ресурсные лимиты.
+LimitNOFILE=65536
+TasksMax=512
+
+[Install]
+WantedBy=multi-user.target

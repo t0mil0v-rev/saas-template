@@ -1,0 +1,64 @@
+# Секреты и локальная конфигурация
+.env
+.env.*
+!.env.example
+deploy/certs/*
+!deploy/certs/.gitkeep
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+.nox/
+.pyright/
+.cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+junit*.xml
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.vite/
+.vitest/
+.eslintcache
+.npm/
+.turbo/
+*.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+.academic-runtime/
+.academic-results/
+
+# Данные и логи
+data/
+backups/
+logs/
+*.log
+*.sql.gz
+*.dump
+*.dump.age
+*.dump.sha256
+*.dump.age.sha256
+
+# IDE и ОС
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

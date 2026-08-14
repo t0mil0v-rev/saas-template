@@ -1,0 +1,24 @@
+# TLS_MODE=acme  -  Caddy сам получает и продлевает сертификат.
+#
+# Требования: публичный DNS указывает на этот сервер, порты 80 и 443 открыты
+# наружу. Caddy проходит ACME-challenge автоматически и продлевает сертификат
+# заранее, без вмешательства.
+#
+# По умолчанию используется Let's Encrypt. Переменная ACME_CA переключает на
+# внутренний ACME-сервер (step-ca / smallstep) - для закрытого контура со
+# своим удостоверяющим центром.
+{
+	email {$ACME_EMAIL}
+	acme_ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+
+	# Единая точка администрирования Caddy (нужна healthcheck'у); наружу
+	# порт 2019 не публикуется - он доступен только внутри контейнера.
+	admin localhost:2019
+}
+
+# Импорт общего блока (см. common.caddy).
+import /etc/caddy/common.caddy
+
+{$DOMAIN} {
+	import app_site
+}
