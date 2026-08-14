@@ -19,7 +19,11 @@ ENV VITE_PUBLIC_URL=$VITE_PUBLIC_URL \
 
 # Слой зависимостей кэшируется отдельно от исходников.
 COPY package.json package-lock.json ./
-RUN npm ci
+# --include=dev обязателен: выше выставлен NODE_ENV=production, при котором
+# `npm ci` иначе пропускает devDependencies, а именно там живут tsc и vite,
+# которыми собирается бандл (npm run build → `tsc -b && vite build`).
+# Без этого сборка падает с `sh: tsc: not found` (exit 127).
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build

@@ -3,7 +3,7 @@
 # Запускается только на отдельном Docker project и не использует рабочие тома.
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/../.." || exit 1
 ROOT="$(pwd -P)"
 RUNTIME="${ROOT}/.academic-runtime"
 RESULTS="${ROOT}/.academic-results"
@@ -79,13 +79,13 @@ RATE_LIMIT_AUTH_PER_MIN=1000
 RATE_LIMIT_REVIEW_PER_HOUR=1000
 REQUIRE_EMAIL_VERIFICATION=true
 MAIL_TRANSPORT=smtp
-MAIL_FROM="Academic SaaS <no-reply@example.test>"
+MAIL_FROM="Academic SaaS <no-reply@example.com>"
 SMTP_HOST=mailpit
 SMTP_PORT=1025
 SMTP_SECURITY=starttls
 SMTP_TIMEOUT_S=5
 METRICS_ALLOWED_NETS=172.16.0.0/12
-BOOTSTRAP_ADMIN_EMAIL=admin@example.test
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=Academic-bootstrap-password-2026!
 BOOTSTRAP_ORG_NAME="Acme"
 BOOTSTRAP_ORG_SLUG=acme
@@ -135,11 +135,11 @@ done
 echo "==> Проверяю SMTP с обязательным STARTTLS"
 curl -fsS -X POST http://127.0.0.1:18080/api/auth/register \
 	-H "Content-Type: application/json" \
-	-d '{"email":"audit@example.test","password":"Academic-test-password-2026!","full_name":"Audit User","org_name":"Audit Org"}' \
+	-d '{"email":"audit@example.com","password":"Academic-test-password-2026!","full_name":"Audit User","org_name":"Audit Org"}' \
 	> "$RESULTS/register.json"
 
 deadline=$(($(date +%s) + 60))
-until curl -fsS http://127.0.0.1:18025/api/v1/messages | grep -q 'audit@example.test'; do
+until curl -fsS http://127.0.0.1:18025/api/v1/messages | grep -q 'audit@example.com'; do
 	if (( $(date +%s) > deadline )); then
 		echo "Письмо не появилось в Mailpit за 60 секунд" >&2
 		exit 1
@@ -173,6 +173,11 @@ restored_value="$(psql_compose -At \
 
 echo "==> Переключаю Caddy на проверяемый TLS"
 sed -i 's/^TLS_MODE=none$/TLS_MODE=internal/' .env
+# .env выше был загружен в окружение (set -a; . ./.env), а переменные
+# окружения имеют приоритет над файлом .env при интерполяции Compose.
+# Без повторного экспорта Compose увидел бы старый TLS_MODE=none и Caddy
+# продолжил бы грузить none.Caddyfile (без TLS на :443).
+export TLS_MODE=internal
 "${COMPOSE[@]}" up -d --force-recreate caddy
 deadline=$(($(date +%s) + 60))
 until curl -fsS --cacert "$CERTS/ca.crt" \
@@ -189,8 +194,11 @@ grep -qi '^strict-transport-security:' "$RESULTS/tls-headers.txt"
 grep -qi '^content-security-policy:' "$RESULTS/tls-headers.txt"
 
 echo "==> Запускаю нагрузочный smoke"
+# Обращаемся по localhost, а не 127.0.0.1: Caddy обслуживает сайт {$DOMAIN}=localhost
+# и выбирает сертификат по SNI. С SNI=127.0.0.1 сайт не совпадает и рукопожатие
+# отклоняется ("tls: internal error"). k6 в --network host, localhost = тот же loopback.
 docker run --rm --network host \
-	-e BASE_URL=https://127.0.0.1:18443 \
+	-e BASE_URL=https://localhost:18443 \
 	-v "$ROOT/tests/ops:/scripts:ro" -v "$RESULTS:/results" \
 	grafana/k6:2.2.0@sha256:9bd01d6941fca969cb61bb57d2da5ee9b385fe2aa8881df3798c196564d6ace6 \
 	run --summary-export=/results/k6-summary.json /scripts/load.js
@@ -198,7 +206,7 @@ docker run --rm --network host \
 echo "==> Запускаю OWASP ZAP baseline"
 docker run --rm --network host -v "$RESULTS:/zap/wrk:rw" \
 	ghcr.io/zaproxy/zaproxy:stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
-	zap-baseline.py -t https://127.0.0.1:18443 -m 1 -I \
+	zap-baseline.py -t https://localhost:18443 -m 1 -I \
 	-r zap.html -J zap.json -w zap.md \
 	-z "-config connection.sslCert.ignoreCertErrors=true"
 

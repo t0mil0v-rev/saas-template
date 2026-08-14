@@ -10,6 +10,10 @@
 	admin localhost:2019
 	# Не пытаться получать сертификаты автоматически: используем свой.
 	auto_https disable_certs
+	# Отдавать сертификат и клиентам, которые не прислали SNI (часть
+	# health-чекеров и сканеров подключается по IP без ServerName). Без этого
+	# Caddy обрывает рукопожатие с alert "internal_error".
+	default_sni {$DOMAIN}
 }
 
 import /etc/caddy/common.caddy
