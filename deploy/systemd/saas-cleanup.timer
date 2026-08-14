@@ -1,0 +1,12 @@
+# Уборка протухших сессий/токенов раз в час.
+#   sudo systemctl enable --now saas-cleanup.timer
+[Unit]
+Description=Hourly SaaS data cleanup
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

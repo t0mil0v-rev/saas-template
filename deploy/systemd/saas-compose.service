@@ -1,0 +1,30 @@
+# Управление Docker-стеком через systemd.
+# Путь «деплой через systemd» для контейнерного варианта: стек стартует при
+# загрузке сервера и переживает падения.
+#
+# Установка:
+#   sudo cp deploy/systemd/saas-compose.service /etc/systemd/system/
+#   отредактируйте WorkingDirectory под свой путь установки
+#   sudo systemctl daemon-reload && sudo systemctl enable --now saas-compose
+[Unit]
+Description=SaaS Platform (Docker Compose stack)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/saas
+# Поднять стек. Образы должны быть собраны заранее (make up / deploy.sh),
+# systemd только запускает/останавливает.
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+ExecStop=/usr/bin/docker compose down
+ExecReload=/usr/bin/docker compose up -d --remove-orphans
+TimeoutStartSec=300
+# Перезапуск при сбое запуска (например, если docker ещё не готов).
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

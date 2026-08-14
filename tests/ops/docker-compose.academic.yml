@@ -1,0 +1,41 @@
+services:
+  mailpit:
+    image: axllent/mailpit:v1.30.7@sha256:d5ecbb067db3705fa953d79e1b7f81ef84038df67aba6c52825d8c02a1ea748a
+    environment:
+      MP_SMTP_TLS_CERT: /certs/mailpit.crt
+      MP_SMTP_TLS_KEY: /certs/mailpit.key
+      MP_SMTP_REQUIRE_STARTTLS: "true"
+    volumes:
+      - ./.academic-runtime/certs:/certs:ro
+    ports:
+      - "127.0.0.1:11025:1025"
+      - "127.0.0.1:18025:8025"
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+
+  api:
+    environment:
+      SSL_CERT_FILE: /certs/ca.crt
+    volumes:
+      - ./.academic-runtime/certs:/certs:ro
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  mail-worker:
+    environment:
+      SSL_CERT_FILE: /certs/ca.crt
+    volumes:
+      - ./.academic-runtime/certs:/certs:ro
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  caddy:
+    volumes:
+      - ./.academic-runtime/certs:/etc/caddy/certs:ro

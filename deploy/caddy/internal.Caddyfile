@@ -1,0 +1,20 @@
+# TLS_MODE=internal  -  свой сертификат (корпоративный CA / wildcard).
+#
+# Положите файлы в deploy/certs/ (монтируется в /etc/caddy/certs):
+#     tls.crt  - сертификат (при необходимости с цепочкой промежуточных)
+#     tls.key  - приватный ключ
+#
+# Ничего наружу для выпуска сертификата не запрашивается - подходит для
+# закрытого контура без выхода в интернет.
+{
+	admin localhost:2019
+	# Не пытаться получать сертификаты автоматически: используем свой.
+	auto_https disable_certs
+}
+
+import /etc/caddy/common.caddy
+
+{$DOMAIN} {
+	tls /etc/caddy/certs/tls.crt /etc/caddy/certs/tls.key
+	import app_site
+}

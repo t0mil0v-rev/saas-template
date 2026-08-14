@@ -1,0 +1,19 @@
+# Разовая уборка протухших данных (сессии, токены, старый аудит).
+# Дёргается таймером saas-cleanup.timer. Для Docker-стека выполняет команду
+# внутри контейнера api; для нативной установки замените ExecStart на прямой
+# вызов venv-питона (см. комментарий ниже).
+[Unit]
+Description=SaaS periodic data cleanup
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/saas
+ExecStart=/usr/bin/docker compose exec -T api python -m app.cli cleanup
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+# Нативный вариант:
+# ExecStart=/opt/saas/apps/api/.venv/bin/python -m app.cli cleanup
+Nice=10

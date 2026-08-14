@@ -1,0 +1,71 @@
+# Общий блок для всех TLS-режимов. Импортируется как (site) в каждый режим.
+#
+# Отвечает за:
+#   * проксирование /api и /metrics в контейнер API;
+#   * раздачу статики SPA с фолбэком на index.html;
+#   * заголовки безопасности для HTML-страницы приложения
+#     (для JSON-ответов API их ставит само приложение - см. SecurityHeadersMiddleware);
+#   * сжатие и кэш статических ассетов.
+(app_site) {
+	# API
+	# Caddy добавляет X-Forwarded-For/Proto; приложению они видны как
+	# пришедшие от доверенного прокси (Caddy в docker-сети попадает в
+	# TRUSTED_PROXIES=172.16.0.0/12).
+	handle /api/* {
+		reverse_proxy api:8000 {
+			header_up X-Forwarded-Host {host}
+			# Не пробрасываем внутрь клиентский X-Request-ID вслепую -
+			# приложение примет его только от доверенного прокси.
+		}
+	}
+
+	handle /metrics {
+		reverse_proxy api:8000
+	}
+
+	# Статика SPA
+	handle {
+		root * /srv/www
+
+		encode zstd gzip
+
+		# Ассеты с хешем в имени кэшируем надолго - они иммутабельны.
+		@hashed path_regexp -[A-Za-z0-9_-]{8,}\.(js|css|woff2?|png|svg|jpg|webp)$
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		# index.html - никогда не кэшировать: иначе после релиза браузер
+		# продолжит грузить старую версию и ссылаться на исчезнувшие ассеты.
+		@html path / *.html
+		header @html Cache-Control "no-cache"
+
+		# SPA-фолбэк: неизвестный путь отдаёт index.html, маршрутизация - на клиенте.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Заголовки безопасности для HTML
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+		# CSP для страницы приложения. 'self' покрывает наши бандлы. Несколько
+		# компонентов используют точечные inline-стили, поэтому style-src пока
+		# допускает 'unsafe-inline'.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+	}
+
+	# Скрываем служебные файлы, если вдруг попали в сборку.
+	@hidden path /.* /*.map
+	respond @hidden 404
+
+	log {
+		output stdout
+		format json
+		# healthcheck Caddy бьёт по /, не засоряем лог - оставляем как есть,
+		# при желании отфильтруйте по полю request>uri.
+	}
+}
