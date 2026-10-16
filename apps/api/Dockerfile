@@ -7,7 +7,7 @@
 #    development  - цель для docker-compose.dev.yml (dev-зависимости, reload)
 #    production   - финал: только runtime, non-root, без компилятора
 
-FROM python:3.11-slim-bookworm@sha256:2e32f7d302adc1c37428355c1e646897c0c53f4fd60b6a551245fb90ee129f91 AS base
+FROM python:3.15-slim-bookworm@sha256:122756f3fe72c4f5d3d71897888204ee85774bc79de952555b8a474e1d0a5d53 AS base
 
 # Python-строго-3.11: образ 3.11-slim гарантирует нужную версию.
 ENV PYTHONUNBUFFERED=1 \
