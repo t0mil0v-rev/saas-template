@@ -7,28 +7,28 @@
 #  Обновление: pip-compile --generate-hashes --strip-extras -o requirements.lock
 
 # HTTP-слой
-fastapi~=0.141.1
+fastapi~=0.143.0
 # FastAPI permits any newer Starlette. Pin the maintained branch explicitly so
 # its transitive version cannot remain on a vulnerable legacy release.
-starlette~=1.6.0
+starlette~=1.8.0
 # [standard] тянет uvloop + httptools + websockets - на них построен app/net
-uvicorn[standard]~=0.52.4
+uvicorn[standard]~=0.54.0
 
 # Валидация и конфигурация
-pydantic~=2.13.5
+pydantic~=2.14.1
 pydantic-settings~=2.15.0
 email-validator~=2.3.0
 
 # База данных
-sqlalchemy[asyncio]~=2.0.52
-asyncpg~=0.31.0
-alembic~=1.19.1
+sqlalchemy[asyncio]~=2.1.4
+asyncpg~=0.32.0
+alembic~=1.20.0
 
 # Безопасность
 argon2-cffi~=25.1.0
 pyotp~=2.10.0
 # AES-GCM для шифрования TOTP-секретов в БД: дамп базы сам по себе не даёт 2FA
-cryptography~=50.0.1
+cryptography~=50.0.2
 
 # Инфраструктура
 redis~=8.1.0
